@@ -132,8 +132,12 @@ int fc0012_set_freq(void *dev, uint32_t freq) {
 int fc0012_set_bw(void *dev, int bw) {
 	return FC0012_SetFrequency(dev, ((rtlsdr_dev_t *) dev)->freq/1000, 6);
 }
-int fc0012_set_gain(void *dev, int gain) { return 0; }
-int fc0012_set_gain_mode(void *dev, int manual) { return 0; }
+int fc0012_set_gain(void *dev, int gain) {
+	return FC0012_SetGain(dev, gain);
+}
+int fc0012_set_gain_mode(void *dev, int manual) {
+	return FC0012_ManualGain(dev, manual);
+}
 
 int _fc0013_init(void *dev) { return fc0013_init(dev); }
 int fc0013_exit(void *dev) { return 0; }

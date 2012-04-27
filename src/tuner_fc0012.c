@@ -51,6 +51,12 @@
  *					 (big value -> low freq)
  */
 
+#define REG_SEC_GAIN	0x12	// Probably some secondary gain control
+#define REG_LNA_GAIN	0x13	// Low noise amplifier gain
+#define REG_AGC_MODE	0x0C	// Contriols AGC mode and something else
+#define AGC_MODE_ON	0xFC
+#define AGC_MODE_OFF	0xEC
+
 /* glue functions to rtl-sdr code */
 int FC0012_Write(void *pTuner, unsigned char RegAddr, unsigned char Byte)
 {
@@ -111,7 +117,7 @@ void FC0012_Dump_Registers()
 	DEBUGF("RSSI calibration mode:\t%s\n", (regBuf & 0x10) ? "RSSI CALIBRATION IN PROGRESS<!>" : "Disabled");
 	FC0012_Read(pTuner, 0x0d, &regBuf);
 	DEBUGF("LNA Force:\t%s\n", (regBuf & 0x1) ? "Forced" : "Not Forced");
-	FC0012_Read(pTuner, 0x13, &regBuf);
+	FC0012_Read(pTuner, LNA_GAIN, &regBuf);
 	DEBUGF("LNA Gain:\t");
 	switch (regBuf & 0x18) {
 		case (0x00): DEBUGF("Low\n"); break;
@@ -137,15 +143,15 @@ int FC0012_Open(void *pTuner)
 	if (FC0012_Write(pTuner, 0x09, 0x6E)) return -1; // Disable LoopThrough
 	if (FC0012_Write(pTuner, 0x0A, 0xB8)) return -1; // Disable LO Test Buffer
 	if (FC0012_Write(pTuner, 0x0B, 0x82)) return -1; // Output Clock is same as clock frequency
-	//if (FC0012_Write(pTuner, 0x0C, 0xF8)) return -1;
-	if (FC0012_Write(pTuner, 0x0C, 0xFC)) return -1;	// AGC up-down mode
+	//if (FC0012_Write(pTuner, REG_AGC_MODE, 0xF8)) return -1;
+	if (FC0012_Write(pTuner, REG_AGC_MODE, AGC_MODE_ON)) return -1;
 	if (FC0012_Write(pTuner, 0x0D, 0x02)) return -1;      // AGC Not Forcing & LNA Forcing
 	if (FC0012_Write(pTuner, 0x0E, 0x00)) return -1;
 	if (FC0012_Write(pTuner, 0x0F, 0x00)) return -1;
 	if (FC0012_Write(pTuner, 0x10, 0x00)) return -1;
 	if (FC0012_Write(pTuner, 0x11, 0x00)) return -1;
-	if (FC0012_Write(pTuner, 0x12, 0x1F)) return -1; // Set to maximum gain
-	if (FC0012_Write(pTuner, 0x13, FC0012_LNAGAIN)) return -1;
+	if (FC0012_Write(pTuner, REG_SEC_GAIN, 0x1F)) return -1; // 0x00-0x1F
+	if (FC0012_Write(pTuner, REG_LNA_GAIN, FC0012_LNAGAIN)) return -1;
 	if (FC0012_Write(pTuner, 0x14, 0x00)) return -1;
 	if (FC0012_Write(pTuner, 0x15, 0x04)) return -1;	   // Enable LNA COMPS
 	
@@ -157,7 +163,6 @@ int FC0012_Open(void *pTuner)
 	if (FC0012_Write(pTuner, 0x11, 0x00)) return -1;
 	if (FC0012_Write(pTuner, 0x15, 0x04)) return -1;
 
-//	DEBUGF("FC0012_Open SUCCESS");
 	return FC0012_OK;
 }
 
@@ -325,3 +330,54 @@ int FC0012_SetFrequency(void *pTuner, unsigned long Frequency, unsigned short Ba
 	return FC0012_OK;
 }
 
+static int perr()
+{
+	printf("E");
+	return -1;
+}
+
+
+int FC0012_ManualGain(void *pTuner, int manual)
+{
+	printf("FC0012_ManualGain: %i\n", manual);
+	if (manual) {
+		if (FC0012_Write(pTuner, REG_AGC_MODE, AGC_MODE_OFF)) return perr();
+
+		return 0;
+	}
+
+	if (FC0012_Write(pTuner, REG_SEC_GAIN, 0x1F)) return perr();
+	if (FC0012_Write(pTuner, REG_LNA_GAIN, FC0012_LNA_GAIN_MAX)) return perr();
+	if (FC0012_Write(pTuner, REG_AGC_MODE, AGC_MODE_ON)) return perr();
+
+	return 0;
+}
+
+int FC0012_SetGain(void *pTuner, int gain)
+{
+	printf(" GAIN %i\n", gain);
+	int sec_gain = 0;
+	int lna_gain;
+
+	if (gain >= 19) {
+		lna_gain = FC0012_LNA_GAIN_MAX;
+		if (gain >= 20)
+			sec_gain = gain - 20;
+		if (sec_gain > 0x1F)
+			sec_gain = 0x1F;
+	}
+	else if (gain >= 18)
+		lna_gain = FC0012_LNA_GAIN_HI;
+	else if (gain >= 7)
+		lna_gain = FC0012_LNA_GAIN_MID;
+	else if (gain >= -4)
+		lna_gain = FC0012_LNA_GAIN_LOW;
+	else
+		lna_gain = FC0012_LNA_GAIN_LOWEST;
+
+//	if (FC0012_Write(pTuner, REG_AGC_MODE, AGC_MODE_OFF)) return perr();
+	if (FC0012_Write(pTuner, REG_SEC_GAIN, sec_gain)) return -1;
+	if (FC0012_Write(pTuner, REG_LNA_GAIN, lna_gain)) return -1;
+
+	return 0;
+}
