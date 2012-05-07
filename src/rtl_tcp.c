@@ -462,8 +462,8 @@ int main(int argc, char **argv)
 			if(do_exit) {
 				goto out;
 			} else if(r) {
-				rlen = sizeof(remote);
-				s = accept(listensocket,(struct sockaddr *)&remote, &rlen);
+				socklen_t len = sizeof(remote);
+				s = accept(listensocket,(struct sockaddr *)&remote, &len);
 				break;
 			}
 		}
