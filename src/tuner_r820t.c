@@ -1174,13 +1174,11 @@ R828_ErrCode R828_IMR(void *pTuner, UINT8 IMR_MEM, int IM_Flag)
 
 	RingVCO = 0;
 	RingFreq = 0;
-	RingRef = 0;
+	RingRef = rtlsdr_get_tuner_clock(pTuner) / 1000;
 	n_ring = 0;
 
-	if (R828_Xtal>24000)
-		RingRef = R828_Xtal /2;
-	else
-		RingRef = R828_Xtal;
+	if (RingRef>24000)
+		RingRef = RingRef /2;
 
 	for(n=0;n<16;n++)
 	{
