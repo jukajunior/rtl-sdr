@@ -1417,14 +1417,9 @@ R828_ErrCode R828_PLL(void *pTuner, UINT32 LO_Freq, R828_Standard_Type R828_Stan
 	{
 		if((((LO_Freq/1000) * MixDiv) >= VCO_Min_kHz) && (((LO_Freq/1000) * MixDiv) < VCO_Max_kHz))
 		{
-			DivBuf = MixDiv;
-			while(DivBuf > 2)
-			{
-				DivBuf = DivBuf >> 1;
-				DivNum ++;
-			}
 			break;
 		}
+		++ DivNum;
 		MixDiv = MixDiv << 1;
 	}
 
